@@ -28,6 +28,9 @@
 //Main competition background code...do not modify!
 #include "Vex_Competition_Includes.c"
 #include "SmartMotorLib.c"
+  int joy_x;            // will hold the X value of the analog stick (choices below)
+  int joy_y;            // will hold the Y value of the analog stick (choices below)
+  int threshold = 10;   // helps to eliminate 'noise' from a joystick that isn't perfectly at (0,0)
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
 /*                                                                           */
@@ -99,10 +102,49 @@ task usercontrol()
   while (true)
   {
     // This is the main execution loop for the user control program.
-    SetMotor(leftfront,vexRT[Ch3]);
-    setMotor(leftback,vexRT[Ch3]);
-    setMotor(rightback, vexRT[Ch3]);
-    setMotor(rightfront,vexRT[Ch3]);
+
+
+    joy_x = vexRT[Ch1];   // This is the RIGHT analog stick.  For LEFT, change 'Ch1' to 'Ch4'.
+    joy_y = vexRT[Ch3];   // This is the LEFT analog stick.  For LEFT, change 'Ch2' to 'Ch3'.
+
+    // Forward, and swing turns: (both abs(X) and abs(Y) are above the threshold, and Y is POSITIVE)
+    if((abs(joy_x) > threshold) && (abs(joy_y) > threshold) && (joy_y > 0))
+    {
+      SetMotor(leftfront,((joy_y + joy_x)/2));
+      SetMotor(leftback,((joy_y + joy_x)/2));
+      SetMotor(rightfront,((joy_y - joy_x)/2));
+    	SetMotor(rightback,((joy_y - joy_x)/2));
+    }
+    // Backwards and swing turns: (both abs(X) and abs(Y) are above the threshold, and Y is NEGATIVE)
+    else if((abs(joy_x) > threshold) && (abs(joy_y) > threshold) && (joy_y < 0))
+    {
+      SetMotor(leftfront,((joy_y - joy_x)/2));
+      SetMotor(leftback,((joy_y - joy_x)/2));
+      SetMotor(rightback, ((joy_y + joy_x)/2));
+      SetMotor(rightfront, ((joy_y + joy_x)/2));
+    }
+    // Turning in place: (abs(X) is above the threshold, abs(Y) is below the threshold)
+    else if((abs(joy_x) > threshold) && (abs(joy_y) < threshold))
+    {
+      SetMotor(leftfront,joy_x);
+      SetMotor(leftback,joy_x);
+      SetMotor(rightfront,(-1 * joy_x));
+    	SetMotor(rightback,(-1 * joy_x));
+    }
+    // Standing still: (both abs(X) and abs(Y) are below the threshold)
+    else
+    {
+      SetMotor(leftfront,0);
+      SetMotor(leftback,0);
+      SetMotor(rightfront,0);
+      SetMotor(rightback,0);
+    }
+
+// former tank drive
+    //SetMotor(leftfront,vexRT[Ch3]);
+    //setMotor(leftback,vexRT[Ch3]);
+    //setMotor(rightback, vexRT[Ch3]);
+    //setMotor(rightfront,vexRT[Ch3]);
 
 		/*
 		motor[newmotor1]=127;
