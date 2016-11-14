@@ -30,7 +30,7 @@
 #include "SmartMotorLib.c"
   int joy_x;            // will hold the X value of the analog stick (choices below)
   int joy_y;            // will hold the Y value of the analog stick (choices below)
-  int threshold = 10;   // helps to eliminate 'noise' from a joystick that isn't perfectly at (0,0)\
+  int threshold = 10;   // helps to eliminate 'noise' from a joystick that isn't perfectly at (0,0)
   											// Also helps to prevent from accidental tilting of the analog sticks on the VEX controller, this is VERY important.
 
 /*---------------------------------------------------------------------------*/
@@ -72,12 +72,29 @@ void pre_auton()
 
 task autonomous()
 {
-  // ..........................................................................
-  // Insert user code here.
-  // ..........................................................................
+	SmartMotorLinkMotors(leftback,leftfront);
+	SmartMotorLinkMotors(rightback,rightfront);
+	SmartMotorLinkMotors(rightback,leftback);
+	SmartMotorLinkMotors(armLTop,armL3);
+	SmartMotorLinkMotors(armRTop,armR3);
+	SmartMotorPtcMonitorEnable();
+	SmartMotorRun();
+	//go foreward 1 sec
+  SetMotor(leftback, 127);
+  setMotor(leftfront, 127);
+  setMotor(rightback, 127);
+  setMotor(rightfront, 127);
+  wait1Msec(1000);
 
-  // Remove this function call once you have "real" code.
-  AutonomousCodePlaceholderForTesting();
+  // arm up (time unknown)
+  setMotor(armLTop, 127);
+  setMotor(armL3, 127);
+  setMotor(armRTop, 127);
+  setMotor(armR3, 127);
+  wait1Msec(/**placeholder**/1000);
+
+
+
 }
 
 /*---------------------------------------------------------------------------*/
