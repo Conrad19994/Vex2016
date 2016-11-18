@@ -1,10 +1,15 @@
+#pragma config(UART_Usage, UART2, uartVEXLCD, baudRate38400, IOPins, None, None)
+#pragma config(I2C_Usage, I2C1, i2cSensors)
+#pragma config(Sensor, in1,    powerExpander,  sensorNone)
 #pragma config(Sensor, dgtl1,  leftcoder,      sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  rightcoder,     sensorQuadEncoder)
 #pragma config(Sensor, dgtl6,  solenoid,       sensorDigitalOut)
-#pragma config(Motor,  port1,           clawL,         tmotorVex393_HBridge, openLoop)
+#pragma config(Sensor, I2C_1,  ,               sensorQuadEncoderOnI2CPort,    , AutoAssign )
+#pragma config(Sensor, I2C_2,  ,               sensorQuadEncoderOnI2CPort,    , AutoAssign )
+#pragma config(Motor,  port1,           clawL,         tmotorVex393_HBridge, openLoop, driveLeft, encoderPort, I2C_1)
 #pragma config(Motor,  port2,           leftbase,      tmotorVex393HighSpeed_MC29, openLoop)
 #pragma config(Motor,  port3,           rightbase,     tmotorVex393HighSpeed_MC29, openLoop)
-#pragma config(Motor,  port4,           clawR,         tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port4,           clawR,         tmotorVex393_MC29, openLoop, driveRight, encoderPort, I2C_2)
 #pragma config(Motor,  port5,           armLT,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port6,           armLB,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port7,           liftL,         tmotorVex393_MC29, openLoop, reversed)
@@ -28,12 +33,175 @@
 //Main competition background code...do not modify!
 #include "Vex_Competition_Includes.c"
 #include "SmartMotorLib.c"
+
   int joy_x;            // will hold the X value of the analog stick (choices below)
   int joy_y;            // will hold the Y value of the analog stick (choices below)
   int threshold = 10;   // helps to eliminate 'noise' from a joystick that isn't perfectly at (0,0)
   											// Also helps to prevent from accidental tilting of the analog sticks on the VEX controller, this is VERY important.
+// LCD vars
+  int display=1, buttonState6D=0, buttonState5D=0, powerMotor;
 
-/*---------------------------------------------------------------------------*/
+  string exp_bat, main_bat, back_bat, main_string="Main:", exp_string="Exp:", back_string="BackUp:", letter, letter1, letter2, full, full1, full2; //battery levels
+  int move1, move2, move, lenth, lenth1, lenth2, print=0, print_last=0, print1=0, print2=0, print1_last=0, print2_last=0;
+
+
+void LCD(){//to print to LCD
+
+bLCDBacklight = true; //turns backlight on for LCD
+
+	if(display == 1){// Main LCD screen shows target rpm, rpm, and all battery voltages
+		//for the top line that always updates
+		clearLCDLine(0);
+		displayLCDString(0, 0, "Tar:");//target will be on the first line left side
+		//displayLCDNumber(0, 4, "69", 0);
+		displayLCDString(0, 8, "RPM:");//rpm will be top line and right side
+		//displayLCDNumber(0, 12, "69", 0);
+
+
+		//for the bottom line and moving text, only runs when the time has passed
+		move=move+1;
+		main_string=" Main:";
+		exp_string=" Exp:";
+		back_string=" BackUp:";
+		sprintf(main_bat,"%1.2f%s",nImmediateBatteryLevel/1000.0,"v");//calculates the battery voltages
+		sprintf(exp_bat,"%1.2f%s",((float)SensorValue[powerExpander]/284.0),"v");
+		sprintf(back_bat,"%1.2f%s",BackupBatteryLevel/1000.0,"v");
+		//adds all of the battery voltages to one sting
+		strcat(main_string,main_bat);
+
+		strcat(exp_string,exp_bat);
+		strcat(main_string,exp_string);
+
+		strcat(back_string,back_bat);
+		strcat(main_string,back_string);
+		//deleates the extra that is not needed
+
+		lenth=strlen(main_string);//saves the length
+		print=print_last;//sets the starting point
+
+		if(move>300){
+			print_last++;
+			move =0;
+		}
+		if(print_last>lenth){//resets if it is past the length of the string
+			print_last=0;
+		}
+
+		//clears the line before printing
+		for(int x=0;x<16;x++){//for loop that prints each indivdual charater to the screen
+			letter="";
+			letter=stringGetChar(main_string,print);
+			strcat(full,letter);// finds the char from the string then prints it
+
+			print=print+1;
+			if(print>lenth){
+				print=0;
+			}
+		}
+		clearLCDLine(1);
+		displayLCDString(1,0,full);
+		full="";
+	}
+
+	if(display == 2){// pints out RPM and target RPM
+		clearLCDLine(0);
+		clearLCDLine(1);
+		displayLCDString(0, 0, "TargetRPM:");
+		//displayLCDNumber(0, 11, targetRPM, 0);
+		displayLCDString(1, 0, "CurrentRPM:");
+		//displayLCDNumber(1, 11, motor_velocity, 0);
+
+	}
+	else if (display == 3){	//prints power expander power and also cortex battery
+		sprintf(main_bat,"%1.2f%s",nImmediateBatteryLevel/1000.0,"v");
+		sprintf(exp_bat,"%1.2f%s",((float)SensorValue[powerExpander]/284.0),"v");
+		clearLCDLine(0);//clears the lines before printing
+		clearLCDLine(1);
+
+		displayLCDString(0, 0, "Main Bat:");
+		displayLCDString(0, 10, main_bat );
+		displayLCDString(1, 0, "Exp Bat:");
+		displayLCDString(1, 10, exp_bat);
+	}
+/*	else if (display == 4){//prints moving text to LCD
+
+		//moving text to top line of LCD
+		//clears only top line of LCD
+		move1 = move1 + 1;
+		print1=print1_last;
+		if(move1>200){
+			print1_last++;
+			move1=0;
+		}
+		if(print1_last>lenth1){
+			print1_last=0;
+		}
+		lenth1=strlen(jokes_top);
+		for(int x=0;x<17;x++){
+			letter1="";
+			letter1 =stringGetChar(jokes_top,print1);
+			strcat(full1,letter1);
+			print1=print1+1;
+			if(print1>=lenth1){
+				print1=0;
+			}
+		}
+		clearLCDLine(0);
+		displayLCDString(0,0,full1);
+		full1="";
+
+		//prints for the bottom line of the screen
+
+		//moving text to bottom line of LCD
+		move2 = move2 + 1;
+		print2=print2_last;
+		if(move2>100){
+			print2_last++;
+			move2=0;
+		}
+		if(print2_last>lenth2){
+			print2_last=0;
+		}
+		lenth2=strlen(jokes_bottom);
+
+
+		for(int x=0;x<17;x++){
+			letter2="";
+			letter2 =stringGetChar(jokes_bottom,print2);
+			strcat(full2,letter2);
+			print2=print2+1;
+			if(print2>lenth2){
+				print2=0;
+			}
+		}
+		clearLCDLine(1);
+		displayLCDString(1,0,full2);
+		full2="";
+	}*/
+	else if(display == 4){//shows what code is loaded onto the cortex
+		clearLCDLine(0);
+		clearLCDLine(1);
+		displayLCDString(0, 0, "Loaded Code:");
+		displayFileName(1, 0);
+
+	}
+	else if(display == 5){//shows the motor output to the wheels
+		clearLCDLine(0);
+		clearLCDLine(1);
+		displayLCDString(0, 0, "Motor power:");
+		displayLCDNumber(1,12,powerMotor, 0);
+
+	}
+	if( 0 != nLCDButtons){//Checks to see if a button is pressed on LCD
+		display = nLCDButtons;
+	}
+}
+
+
+
+
+
+  /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
 /*                                                                           */
 /*  You may want to perform some actions before the competition starts.      */
@@ -97,7 +265,7 @@ task usercontrol()
   while (true)
   {
     // This is the main execution loop for the user control program.
-
+	  LCD();
 
     /////***** DRIVE CODE *****\\\\\
     // Code to move Forward or Backward
@@ -118,7 +286,7 @@ task usercontrol()
     //Variables for Y
     if (abs(vexRT[Ch3]) > threshold)
     {
-    	joy_y = vexRT[Ch3];
+    	joy_y = -vexRT[Ch3];
     }
     else
     {
@@ -127,10 +295,10 @@ task usercontrol()
 
     //Drive Code - Super Simple???
 
-    SetMotor(leftbase,(joy_y + joy_x));
+    SetMotor(leftbase,(joy_x + joy_y));
     /*SetMotor(leftback,(joy_y + joy_x));*/
 
-		SetMotor(rightbase,(joy_y - joy_x));
+		SetMotor(rightbase,(joy_x - joy_y));
     /*SetMotor(rightback,(joy_y - joy_x));*/
 
  		/////***** ARM CODE *****\\\\\
@@ -141,6 +309,7 @@ task usercontrol()
     	motor[armLB]=-127;
     	motor[armRT]=127;
     	motor[armRB]=127;
+    	powerMotor=127;
     }
 
     else if(vexRT[Btn8D]==1)
@@ -149,6 +318,7 @@ task usercontrol()
     	motor[armLB]=127;
     	motor[armRB]=-127;
     	motor[armRT]=-127;
+			powerMotor=-127;
     }
 
     else
@@ -157,6 +327,7 @@ task usercontrol()
     	motor[armLB]=0;
     	motor[armRT]=0;
     	motor[armRB]=0;
+      powerMotor=0;
     }
 
     /////***** LIFT CODE *****\\\\\
@@ -168,7 +339,7 @@ task usercontrol()
 
     }
 
-    else if(vexRT[Btn8D]==1)
+    else if(vexRT[Btn7D]==1)
     {
     	motor[liftL]=127;
     	motor[liftR]=-127;
@@ -178,6 +349,29 @@ task usercontrol()
     {
     	motor[liftL]=0;
     	motor[liftR]=0;
+
+    }
+
+    /////***** LIFT CODE *****\\\\\
+
+
+    if(vexRT[Btn6U]==1)
+    {
+    	motor[clawL]=-127;
+    	motor[clawR]=127;
+
+    }
+
+    else if(vexRT[Btn5U]==1)
+    {
+    	motor[clawL]=127;
+    	motor[clawR]=-127;
+    }
+
+    else
+    {
+    	motor[clawL]=0;
+    	motor[clawR]=0;
 
     }
 
